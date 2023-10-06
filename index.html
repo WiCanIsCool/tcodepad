@@ -1,0 +1,77 @@
+<html lang="en">
+
+<head>
+    <title>tcodepad</title>
+
+    <script src="https://unpkg.com/joypad.js/dist/joypad.min.js"></script>
+    <script src="https://unpkg.com/ayvajs/dist/ayva.dist.min.js"></script>
+
+    <script>
+        const AXIS_MAP = [
+            'sway',
+            'stroke',
+            'roll',
+            'pitch'
+        ]
+
+        const ayva = new Ayva().defaultConfiguration();
+
+        joypad.set({
+            axisMovementThreshold: 0.0,
+        });
+
+        joypad.on('button_press', async (e) => {
+            await ayva.stop()
+            await ayva.home()
+        });
+
+        const lastValues = {}
+        joypad.on('axis_move', async (e) => {
+            const value = Ayva.map(e.detail.axisMovementValue, -1, 1, 1, 0);
+
+            const axisName = AXIS_MAP[e.detail.axis];
+            const lastValue = lastValues[e.detail.axis]
+            if (lastValue !== value) {
+                lastValues[e.detail.axis] = value;
+
+                await ayva.stop();
+                await ayva.move({
+                    axis: axisName,
+                    to: value,
+                    speed: 100
+                });
+            }
+        });
+
+        async function connect() {
+            const connectButton = document.getElementById('connect');
+            try {
+                connectButton.disabled = true
+                connectButton.innerText = 'Connecting...';
+
+                const device = new WebSerialDevice();
+                await device.requestConnection();
+
+                ayva.addOutput(device);
+                await ayva.home();
+
+                connectButton.disabled = true;
+                connectButton.innerText = 'Connected';
+            } catch (error) {
+                connectButton.disabled = false
+                connectButton.innerText = 'Connect';
+
+                alert(`Error connecting to TCode device: ${error}`)
+            }
+        }
+    </script>
+</head>
+
+<body>
+<h1>tcodepad</h1>
+<p>Control your TCode device using any gamepad, move the joysticks to move the device, press any button to return all axes home.</p>
+<button id="connect" onclick="connect()">Connect</button>
+
+</body>
+
+</html>
